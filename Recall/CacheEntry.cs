@@ -5,7 +5,7 @@ namespace Recall
 {
     public class CacheEntry<T>
     {
-        public CacheEntry(IEnumerable<T> items)
+        internal CacheEntry(IEnumerable<T> items)
         {
             _items = items;
             Created = DateTime.Now;
