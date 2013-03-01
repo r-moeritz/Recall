@@ -9,36 +9,29 @@ namespace Recall
     public sealed class Memoizer<TResult, TCache> : IMemoizer<TResult>
         where TCache : IDictionary<string, CacheEntry<TResult>>, new()
     {
-        public const int DefaultMaxItems = 100;
+        #region Static Fields
 
         public static readonly Func<IEnumerable<KeyValuePair<string, CacheEntry<TResult>>>,
             IOrderedEnumerable<KeyValuePair<string, CacheEntry<TResult>>>> DefaultEvictionOrderer = EvictionPolicy.LRU;
+        private static readonly MemoizerSettings DefaultSettings = new MemoizerSettings
+            {
+                MaxAge = TimeSpan.FromMinutes(5),
+                MaxItems = 10000
+            };
+        private static Memoizer<TResult, TCache> _defaultInstance;
+
+        #endregion
+
+        #region Fields
 
         private readonly TCache _cache = new TCache();
         private readonly object _locker = new object();
 
-        private static Memoizer<TResult, TCache> _defaultInstance;
-
-        public static Memoizer<TResult, TCache> DefaultInstance
-        {
-            get { return _defaultInstance ?? CreateDefaultInstance(); }
-        }
-
-        private static Memoizer<TResult, TCache> CreateDefaultInstance()
-        {
-            _defaultInstance = new Memoizer<TResult, TCache>
-                                   {
-                                       MaxItems = DefaultMaxItems,
-                                       EvictionOrderer = DefaultEvictionOrderer
-                                   };
-            return _defaultInstance;
-        }
+        #endregion
 
         #region Implementation of IMemoizer
 
-        public int MaxItems { get; set; }
-
-        public TimeSpan MaxAge { get; set; }
+        public MemoizerSettings Settings { get; set; }
 
         public Func<IEnumerable<KeyValuePair<string, CacheEntry<TResult>>>,
             IOrderedEnumerable<KeyValuePair<string, CacheEntry<TResult>>>> EvictionOrderer { get; set; }
@@ -352,6 +345,20 @@ namespace Recall
 
         #region Utility Functions
 
+        public static Memoizer<TResult, TCache> DefaultInstance
+        {
+            get { return _defaultInstance ?? CreateDefaultInstance(); }
+        }
+
+        private static Memoizer<TResult, TCache> CreateDefaultInstance()
+        {
+            _defaultInstance = new Memoizer<TResult, TCache>
+            {
+                Settings = DefaultSettings
+            };
+            return _defaultInstance;
+        }
+
         private void Invalidate(string key)
         {
             lock (_locker)
@@ -391,9 +398,9 @@ namespace Recall
 
         private void EvictItems(int newItemCount)
         {
-            if (MaxItems <= 0 || _cache.Count == 0) return;
+            if (Settings.MaxItems <= 0 || _cache.Count == 0) return;
 
-            var evictionCount = _cache.Sum(pair => pair.Value.Items.Count()) + newItemCount - MaxItems;
+            var evictionCount = _cache.Sum(pair => pair.Value.Items.Count()) + newItemCount - Settings.MaxItems;
             if (evictionCount <= 0) return;
 
             var orderer = EvictionOrderer ?? DefaultEvictionOrderer;
@@ -406,8 +413,8 @@ namespace Recall
 
         private void EvictExpiredItems()
         {
-            if (MaxAge == TimeSpan.Zero || _cache.Count == 0) return;
-            var evictees = _cache.Where(p => DateTime.Now.Subtract(p.Value.Created) > MaxAge).ToArray();
+            if (Settings.MaxAge == TimeSpan.Zero || _cache.Count == 0) return;
+            var evictees = _cache.Where(p => DateTime.Now.Subtract(p.Value.Created) > Settings.MaxAge).ToArray();
             foreach (var pair in evictees)
             {
                 _cache.Remove(pair);

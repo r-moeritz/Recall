@@ -7,12 +7,10 @@ namespace Recall
 {
     public interface IMemoizer<TResult>
     {
-        int MaxItems { get; }
-
-        TimeSpan MaxAge { get; }
+        MemoizerSettings Settings { get; set; }
 
         Func<IEnumerable<KeyValuePair<string, CacheEntry<TResult>>>,
-            IOrderedEnumerable<KeyValuePair<string, CacheEntry<TResult>>>> EvictionOrderer { get; }
+            IOrderedEnumerable<KeyValuePair<string, CacheEntry<TResult>>>> EvictionOrderer { get; set; }
 
         MemoizedFunc<TResult> Memoize(Func<IEnumerable<TResult>> func);
 
