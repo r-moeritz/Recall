@@ -17,8 +17,6 @@ namespace Recall
 
         public int AccessCount { get; private set; }
 
-        public bool Evict { get; set; }
-
         private readonly IEnumerable<T> _items;
 
         public IEnumerable<T> Items

@@ -18,8 +18,8 @@ namespace Recall
             {
                 return new MemoizerSettings
                 {
-                    MaxAge = TimeSpan.FromMinutes(5),
-                    MaxItems = 10000
+                    MaxAge = TimeSpan.Zero,
+                    MaxItems = 0
                 };
             }
         }
