@@ -16,8 +16,7 @@ static void Main()
 {
     Console.WriteLine("Executing queries. Please be patient.");
     
-    var memoizer = new Memoizer<int, Dictionary<string, CacheEntry<int>>>();
-    var memoizedTaskAsyncFunc = memoizer.MemoizeTask<int>(TaskAsyncQuery);
+    var memoizedTaskAsyncFunc = UberMemoizer.DefaultInstance.MemoizeTask<int, int>(TaskAsyncQuery);
 
     ExecuteTaskAsyncQuery(memoizedTaskAsyncFunc, QueryArg).Wait();
     ExecuteTaskAsyncQuery(memoizedTaskAsyncFunc, QueryArg).Wait();

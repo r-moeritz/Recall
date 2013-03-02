@@ -13,12 +13,6 @@ namespace Recall
 
         public static readonly Func<IEnumerable<KeyValuePair<string, CacheEntry<TResult>>>,
             IOrderedEnumerable<KeyValuePair<string, CacheEntry<TResult>>>> DefaultEvictionOrderer = EvictionPolicy.LRU;
-        private static readonly MemoizerSettings DefaultSettings = new MemoizerSettings
-            {
-                MaxAge = TimeSpan.FromMinutes(5),
-                MaxItems = 10000
-            };
-        private static Memoizer<TResult, TCache> _defaultInstance;
 
         #endregion
 
@@ -26,15 +20,24 @@ namespace Recall
 
         private readonly TCache _cache = new TCache();
         private readonly object _locker = new object();
+        private MemoizerSettings _settings = Defaults.DefaultMemoizerSettings;
+
+        public Func<IEnumerable<KeyValuePair<string, CacheEntry<TResult>>>,
+        IOrderedEnumerable<KeyValuePair<string, CacheEntry<TResult>>>> EvictionOrderer { get; set; }
 
         #endregion
 
-        #region Implementation of IMemoizer
+        #region Properties
 
-        public MemoizerSettings Settings { get; set; }
+        public MemoizerSettings Settings
+        {
+            get { return _settings; }
+            set { _settings = value; }
+        }
 
-        public Func<IEnumerable<KeyValuePair<string, CacheEntry<TResult>>>,
-            IOrderedEnumerable<KeyValuePair<string, CacheEntry<TResult>>>> EvictionOrderer { get; set; }
+        #endregion
+
+        #region Public Methods
 
         public MemoizedFunc<TResult> Memoize(Func<IEnumerable<TResult>> func)
         {
@@ -343,21 +346,7 @@ namespace Recall
 
         #endregion
 
-        #region Utility Functions
-
-        public static Memoizer<TResult, TCache> DefaultInstance
-        {
-            get { return _defaultInstance ?? CreateDefaultInstance(); }
-        }
-
-        private static Memoizer<TResult, TCache> CreateDefaultInstance()
-        {
-            _defaultInstance = new Memoizer<TResult, TCache>
-            {
-                Settings = DefaultSettings
-            };
-            return _defaultInstance;
-        }
+        #region Private Methods
 
         private void Invalidate(string key)
         {

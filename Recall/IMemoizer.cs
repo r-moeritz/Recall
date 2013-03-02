@@ -5,6 +5,21 @@ using System.Threading.Tasks;
 
 namespace Recall
 {
+    public interface IMemoizer
+    {
+        MemoizedFunc<TResult> Memoize<TResult>(Func<IEnumerable<TResult>> func);
+
+        MemoizedFunc<TArg, TResult> Memoize<TArg, TResult>(Func<TArg, IEnumerable<TResult>> func);
+
+        MemoizedAsyncFunc<TResult> Memoize<TResult>(Action<Action<IEnumerable<TResult>>> action);
+
+        MemoizedAsyncFunc<TArg, TResult> Memoize<TArg, TResult>(Action<TArg, Action<IEnumerable<TResult>>> action);
+
+        MemoizedTaskAsyncFunc<TResult> MemoizeTask<TResult>(Func<Task<IEnumerable<TResult>>> func);
+
+        MemoizedTaskAsyncFunc<TArg, TResult> MemoizeTask<TArg, TResult>(Func<TArg, Task<IEnumerable<TResult>>> func);
+    }
+
     public interface IMemoizer<TResult>
     {
         MemoizerSettings Settings { get; set; }

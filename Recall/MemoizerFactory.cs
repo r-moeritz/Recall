@@ -4,21 +4,46 @@ namespace Recall
 {
     public sealed class MemoizerFactory : IMemoizerFactory
     {
+        #region Static Fields
+
+        public static IMemoizerFactory DefaultInstance = Defaults.DefaultMemoizerFactory;
+
         private static readonly Type GenericMemoizerType = typeof(Memoizer<,>);
 
-        #region Implementation of IMemoizerFactory
+        #endregion
 
-        public MemoizerSettings Settings { get; set; }
+        #region Fields
 
-        public Type GenericCacheType { get; set; }
+        private MemoizerSettings _settings = Defaults.DefaultMemoizerSettings;
+        private Type _genericCacheType = Defaults.DefaultGenericCacheType;
 
-        public IMemoizer<T> Create<T>()
+        #endregion
+
+        #region Properties
+
+        public MemoizerSettings Settings
         {
-            var constructedCacheType = GenericCacheType.MakeGenericType(typeof(string), typeof (CacheEntry<T>));
-            var constructedMemoizerType = GenericMemoizerType.MakeGenericType(typeof (T), constructedCacheType);
+            get { return _settings; }
+            set { _settings = value; }
+        }
+
+        public Type GenericCacheType
+        {
+            get { return _genericCacheType; }
+            set { _genericCacheType = value; }
+        }
+
+        #endregion
+
+        #region Public Methods
+
+        public IMemoizer<TResult> Create<TResult>()
+        {
+            var constructedCacheType = GenericCacheType.MakeGenericType(typeof(string), typeof (CacheEntry<TResult>));
+            var constructedMemoizerType = GenericMemoizerType.MakeGenericType(typeof (TResult), constructedCacheType);
             
             var ctor = constructedMemoizerType.GetConstructor(new Type[]{});
-            var memoizer = (IMemoizer<T>)ctor.Invoke(null);
+            var memoizer = (IMemoizer<TResult>) ctor.Invoke(null);
             memoizer.Settings = Settings;
             return memoizer;
         }

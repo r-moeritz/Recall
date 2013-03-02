@@ -6,7 +6,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Recall;
 
-namespace Examples.Factory
+namespace Examples.Uber
 {
     internal class Program
     {
@@ -42,18 +42,7 @@ namespace Examples.Factory
         {
             Console.WriteLine("Executing queries. Please be patient.");
 
-            var factory = new MemoizerFactory
-            {
-                GenericCacheType = typeof(Dictionary<,>),
-                Settings = new MemoizerSettings
-                {
-                    MaxAge = TimeSpan.FromSeconds(5),
-                    MaxItems = 10000
-                }
-            };
-
-            var memoizer = factory.Create<int>();
-            var memoizedTaskAsyncFunc = memoizer.MemoizeTask<int>(TaskAsyncQuery);
+            var memoizedTaskAsyncFunc = UberMemoizer.DefaultInstance.MemoizeTask<int, int>(TaskAsyncQuery);
 
             ExecuteTaskAsyncQuery(memoizedTaskAsyncFunc, QueryArg).Wait();
             ExecuteTaskAsyncQuery(memoizedTaskAsyncFunc, QueryArg).Wait();

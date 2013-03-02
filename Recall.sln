@@ -29,7 +29,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = ".nuget", ".nuget", "{93DB80
 		.nuget\NuGet.targets = .nuget\NuGet.targets
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Examples.Factory", "Examples\Factory\Examples.Factory.csproj", "{592FD4FE-AB9B-4C91-B712-5278E8869993}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Examples.Uber", "Examples\Uber\Examples.Uber.csproj", "{592FD4FE-AB9B-4C91-B712-5278E8869993}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

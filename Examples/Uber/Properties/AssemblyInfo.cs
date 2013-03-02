@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("Examples.Factory")]
-[assembly: AssemblyDescription("")]
+[assembly: AssemblyTitle("Examples.Uber")]
+[assembly: AssemblyDescription("Part of Recall, a memoization library for .NET")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("Examples.Factory")]
-[assembly: AssemblyCopyright("Copyright ©  2013")]
+[assembly: AssemblyCompany("Ralph Möritz")]
+[assembly: AssemblyProduct("Recall")]
+[assembly: AssemblyCopyright("Copyright © Ralph Möritz 2012")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

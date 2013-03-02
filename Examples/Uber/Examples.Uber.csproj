@@ -7,8 +7,8 @@
     <ProjectGuid>{592FD4FE-AB9B-4C91-B712-5278E8869993}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Examples.Factory</RootNamespace>
-    <AssemblyName>Examples.Factory</AssemblyName>
+    <RootNamespace>Examples.Uber</RootNamespace>
+    <AssemblyName>Examples.Uber</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
   </PropertyGroup>
