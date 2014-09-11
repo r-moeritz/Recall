@@ -2,10 +2,10 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata>
     <id>Recall</id>
-    <version>1.0.4</version>
+    <version>1.0.5</version>
     <authors>Ralph Möritz</authors>
     <owners>Ralph Möritz</owners>
-    <projectUrl>https://github.com/ralph-moeritz/Recall</projectUrl>
+    <projectUrl>https://github.com/rmoritz/Recall</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>A portable memoization and caching library for .NET</description>
     <releaseNotes />

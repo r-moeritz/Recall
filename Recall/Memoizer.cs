@@ -21,6 +21,10 @@ namespace Recall
         private readonly TCache _cache = new TCache();
         private readonly object _locker = new object();
         private MemoizerSettings _settings = Defaults.DefaultMemoizerSettings;
+        private readonly IDictionary<string, Queue<TaskCompletionSource<IEnumerable<TResult>>>> _taskQueues
+            = new Dictionary<string, Queue<TaskCompletionSource<IEnumerable<TResult>>>>();
+        private readonly IDictionary<string, Queue<Action<IEnumerable<TResult>>>> _callbackQueues
+            = new Dictionary<string, Queue<Action<IEnumerable<TResult>>>>();
 
         public Func<IEnumerable<KeyValuePair<string, CacheEntry<TResult>>>,
         IOrderedEnumerable<KeyValuePair<string, CacheEntry<TResult>>>> EvictionOrderer { get; set; }
@@ -138,6 +142,8 @@ namespace Recall
                                callback =>
                                    {
                                        IEnumerable<TResult> items = null;
+                                       var firstCallback          = false;
+                                       Queue<Action<IEnumerable<TResult>>> queue = null;
 
                                        lock (_locker)
                                        {
@@ -148,36 +154,73 @@ namespace Recall
                                                // Cache hit.
                                                items = _cache[key].Items;
                                            }
-                                       }
+                                           else
+                                           {
+                                               // Cache miss.
+                                               _callbackQueues.TryGetValue(key, out queue);
 
-                                       if (items != null)
-                                       {
-                                           callback(items);
-                                           return;
-                                       }
-
-                                       // Cache miss, call async function.
-                                       action(
-                                           results =>
+                                               if (queue == null)
                                                {
+                                                   queue = new Queue<Action<IEnumerable<TResult>>>();
+                                                   _callbackQueues.Add(key, queue);
+                                               }
+
+                                               queue.Enqueue(callback);
+                                               firstCallback = (queue.Count == 1);
+                                           }
+                                       }
+                                       
+                                       if (firstCallback)
+                                       {
+                                           // ... cache miss continued: call async function.
+                                           action(
+                                               results =>
+                                               {
+                                                   var queueEmpty = false;
+
                                                    if (results == null || !results.Any())
                                                    {
-                                                       callback(Enumerable.Empty<TResult>());
-                                                       return;
-                                                   }
+                                                       while (!queueEmpty)
+                                                       {
+                                                           lock (_locker)
+                                                           {
+                                                               callback   = queue.Dequeue();
+                                                               queueEmpty = (queue.Count == 0);
+                                                           }
 
-                                                   lock (_locker)
+                                                           callback(Enumerable.Empty<TResult>());
+                                                       }
+                                                   }
+                                                   else
                                                    {
-                                                       // Make space in the cache for function results.
-                                                       EvictItems(results.Count());
+                                                       lock (_locker)
+                                                       {
+                                                           // Make space in the cache for function results.
+                                                           EvictItems(results.Count());
 
-                                                       // Add function results to cache.
-                                                       var entry = new CacheEntry<TResult>(results);
-                                                       _cache[key] = entry;                                                       
+                                                           // Add function results to cache.
+                                                           var entry = new CacheEntry<TResult>(results);
+                                                           _cache[key] = entry;
+                                                       }
+
+                                                       while (!queueEmpty)
+                                                       {
+                                                           lock (_locker)
+                                                           {
+                                                               callback = queue.Dequeue();
+                                                               queueEmpty = (queue.Count == 0);
+                                                           }
+
+                                                           callback(results);
+                                                       }
                                                    }
-
-                                                   callback(results);
                                                });
+                                       }
+                                       else
+                                       { 
+                                           // ... cache hit continued.
+                                           callback(items);
+                                       }
                                    },
                            Invalidate =
                                () => Invalidate(key)
@@ -193,6 +236,8 @@ namespace Recall
                                    {
                                        var key = GetMemoryKey(action.Method, arg);
                                        IEnumerable<TResult> items = null;
+                                       var firstCallback = false;
+                                       Queue<Action<IEnumerable<TResult>>> queue = null;
 
                                        lock (_locker)
                                        {
@@ -203,36 +248,72 @@ namespace Recall
                                                // Cache hit.
                                                items = _cache[key].Items;
                                            }
-                                       }
+                                           else
+                                           {
+                                               // Cache miss.
+                                               _callbackQueues.TryGetValue(key, out queue);
 
-                                       if (items != null)
+                                               if (queue == null)
+                                               {
+                                                   queue = new Queue<Action<IEnumerable<TResult>>>();
+                                                   _callbackQueues.Add(key, queue);
+                                               }
+
+                                               queue.Enqueue(callback);
+                                               firstCallback = (queue.Count == 1);
+                                           }
+                                       }
+                                       
+                                       if (firstCallback)
                                        {
-                                           callback(items);
-                                           return;
+                                           // ... cache miss continued: call async function.
+                                           action(arg,
+                                               results =>
+                                               {
+                                                   var queueEmpty = false;
+
+                                                   if (results == null || !results.Any())
+                                                   {
+                                                       while (!queueEmpty)
+                                                       {
+                                                           lock (_locker)
+                                                           {
+                                                               callback = queue.Dequeue();
+                                                               queueEmpty = (queue.Count == 0);
+                                                           }
+
+                                                           callback(Enumerable.Empty<TResult>());
+                                                       }
+                                                   }
+                                                   else
+                                                   {
+                                                       lock (_locker)
+                                                       {
+                                                           // Make space in the cache for function results.
+                                                           EvictItems(results.Count());
+
+                                                           // Add function results to cache.
+                                                           var entry = new CacheEntry<TResult>(results);
+                                                           _cache[key] = entry;
+                                                       }
+
+                                                       while (!queueEmpty)
+                                                       {
+                                                           lock (_locker)
+                                                           {
+                                                               callback = queue.Dequeue();
+                                                               queueEmpty = (queue.Count == 0);
+                                                           }
+
+                                                           callback(results);
+                                                       }
+                                                   }
+                                               });
                                        }
-
-                                       // Cache miss, call async action.
-                                       action(arg,
-                                              results =>
-                                                  {
-                                                      if (results == null || !results.Any())
-                                                      {
-                                                          callback(Enumerable.Empty<TResult>());
-                                                          return;
-                                                      }
-
-                                                      lock (_locker)
-                                                      {
-                                                          // Make space in the cache for query results.
-                                                          EvictItems(results.Count());
-
-                                                          // Add query results to cache.
-                                                          var entry = new CacheEntry<TResult>(results);
-                                                          _cache[key] = entry;                                                          
-                                                      }
-
-                                                      callback(results);
-                                                  });
+                                       else
+                                       {   // ... cache hit continued.
+                                           callback(items);
+                                       }
                                    },
                            Invalidate =
                                arg =>
@@ -251,6 +332,10 @@ namespace Recall
                            InvokeAsync =
                                () =>
                                    {
+                                       var completionSource = new TaskCompletionSource<IEnumerable<TResult>>();
+                                       var firstTask = false;
+                                       Queue<TaskCompletionSource<IEnumerable<TResult>>> queue = null;
+
                                        lock (_locker)
                                        {
                                            EvictExpiredItems();
@@ -259,32 +344,91 @@ namespace Recall
                                            {
                                                // Cache hit.
                                                var results = _cache[key].Items;
-                                               return Task.Factory.StartNew(() => results);
+                                               completionSource.TrySetResult(results);
+                                           }
+                                           else
+                                           {
+                                               // Cache miss.
+                                               _taskQueues.TryGetValue(key, out queue);
+                                               if (queue == null)
+                                               {
+                                                   queue = new Queue<TaskCompletionSource<IEnumerable<TResult>>>();
+                                                   _taskQueues.Add(key, queue);
+                                               }
+
+                                               queue.Enqueue(completionSource);
+                                               firstTask = (queue.Count == 1);
                                            }
                                        }
 
-                                       // Cache miss, call original function.
-                                       var task = func();
-                                       return task.ContinueWith(
-                                           _ =>
+                                       if (firstTask)
+                                       {
+                                           // ... cache miss continued: call original function.
+                                           var task = func();
+                                           task.ContinueWith(
+                                               _ =>
                                                {
-                                                   if (task.Result == null || !task.Result.Any())
+                                                   var queueEmpty = false;
+
+                                                   if (task.Exception != null)
                                                    {
-                                                       return Enumerable.Empty<TResult>();
-                                                   }
+                                                       while (!queueEmpty)
+                                                       {
+                                                           TaskCompletionSource<IEnumerable<TResult>> cs;
 
-                                                   lock (_locker)
+                                                           lock (_locker)
+                                                           {
+                                                               cs = queue.Dequeue();
+                                                               queueEmpty = (queue.Count == 0);
+                                                           }
+
+                                                           cs.TrySetException(task.Exception);
+                                                       }
+                                                   }
+                                                   else if (task.Result == null || !task.Result.Any())
                                                    {
-                                                       // Make space in the cache for function results.
-                                                       EvictItems(task.Result.Count());
+                                                       while (!queueEmpty)
+                                                       {
+                                                           TaskCompletionSource<IEnumerable<TResult>> cs;
 
-                                                       // Add function results to cache.
-                                                       var entry = new CacheEntry<TResult>(task.Result);
-                                                       _cache[key] = entry;
+                                                           lock (_locker)
+                                                           {
+                                                               cs = queue.Dequeue();
+                                                               queueEmpty = (queue.Count == 0);
+                                                           }
+
+                                                           cs.TrySetResult(Enumerable.Empty<TResult>());
+                                                       }
                                                    }
+                                                   else
+                                                   {
+                                                       lock (_locker)
+                                                       {
+                                                           // Make space in the cache for function results.
+                                                           EvictItems(task.Result.Count());
 
-                                                   return task.Result;
+                                                           // Add function results to cache.
+                                                           var entry = new CacheEntry<TResult>(task.Result);
+                                                           _cache[key] = entry;
+                                                       }
+
+                                                       while (!queueEmpty)
+                                                       {
+                                                           TaskCompletionSource<IEnumerable<TResult>> cs;
+
+                                                           lock (_locker)
+                                                           {
+                                                               cs = queue.Dequeue();
+                                                               queueEmpty = (queue.Count == 0);
+                                                           }
+
+                                                           cs.TrySetResult(task.Result);
+                                                       }
+                                                   }
                                                });
+                                       }
+
+                                       return completionSource.Task;
                                    },
                            Invalidate =
                                () => Invalidate(key)
@@ -299,6 +443,9 @@ namespace Recall
                                arg =>
                                    {
                                        var key = GetMemoryKey(func.Method, arg);
+                                       var completionSource = new TaskCompletionSource<IEnumerable<TResult>>();
+                                       var firstTask = false;
+                                       Queue<TaskCompletionSource<IEnumerable<TResult>>> queue = null;
 
                                        lock (_locker)
                                        {
@@ -308,32 +455,91 @@ namespace Recall
                                            {
                                                // Cache hit.
                                                var results = _cache[key].Items;
-                                               return Task.Factory.StartNew(() => results);
+                                               completionSource.TrySetResult(results);
+                                           }
+                                           else
+                                           {
+                                               // Cache miss.
+                                               _taskQueues.TryGetValue(key, out queue);
+                                               if (queue == null)
+                                               {
+                                                   queue = new Queue<TaskCompletionSource<IEnumerable<TResult>>>();
+                                                   _taskQueues.Add(key, queue);
+                                               }
+
+                                               queue.Enqueue(completionSource);
+                                               firstTask = (queue.Count == 1);
                                            }
                                        }
 
-                                       // Cache miss, call original function.
-                                       var task = func(arg);
-                                       return task.ContinueWith(
-                                           _ =>
+                                       if (firstTask)
+                                       {
+                                           // ... cache miss continued: call original function.
+                                           var task = func(arg);
+                                           task.ContinueWith(
+                                               _ =>
                                                {
-                                                   if (task.Result == null || !task.Result.Any())
+                                                   var queueEmpty = false;
+
+                                                   if (task.Exception != null)
                                                    {
-                                                       return Enumerable.Empty<TResult>();
-                                                   }
+                                                       while (!queueEmpty)
+                                                       {
+                                                           TaskCompletionSource<IEnumerable<TResult>> cs;
 
-                                                   lock (_locker)
+                                                           lock (_locker)
+                                                           {
+                                                               cs = queue.Dequeue();
+                                                               queueEmpty = (queue.Count == 0);
+                                                           }
+
+                                                           cs.TrySetException(task.Exception);
+                                                       }
+                                                   }
+                                                   else if (task.Result == null || !task.Result.Any())
                                                    {
-                                                       // Make space in the cache for function results.
-                                                       EvictItems(task.Result.Count());
+                                                       while (!queueEmpty)
+                                                       {
+                                                           TaskCompletionSource<IEnumerable<TResult>> cs;
 
-                                                       // Add function results to cache.
-                                                       var entry = new CacheEntry<TResult>(task.Result);
-                                                       _cache[key] = entry;                                                       
+                                                           lock (_locker)
+                                                           {
+                                                               cs = queue.Dequeue();
+                                                               queueEmpty = (queue.Count == 0);
+                                                           }
+
+                                                           cs.TrySetResult(Enumerable.Empty<TResult>());
+                                                       }
                                                    }
+                                                   else
+                                                   {
+                                                       lock (_locker)
+                                                       {
+                                                           // Make space in the cache for function results.
+                                                           EvictItems(task.Result.Count());
 
-                                                   return task.Result;
+                                                           // Add function results to cache.
+                                                           var entry = new CacheEntry<TResult>(task.Result);
+                                                           _cache[key] = entry;
+                                                       }
+
+                                                       while (!queueEmpty)
+                                                       {
+                                                           TaskCompletionSource<IEnumerable<TResult>> cs;
+
+                                                           lock (_locker)
+                                                           {
+                                                               cs = queue.Dequeue();
+                                                               queueEmpty = (queue.Count == 0);
+                                                           }
+
+                                                           cs.TrySetResult(task.Result);
+                                                       }
+                                                   }
                                                });
+                                       }
+
+                                       return completionSource.Task;
                                    },
                            Invalidate =
                                arg =>
