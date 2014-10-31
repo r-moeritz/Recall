@@ -69,6 +69,12 @@ namespace Recall
             return memoizer.MemoizeTask<TArg>(func);
         }
 
+        public void InvalidateAll<TResult>()
+        {
+            var memoizer = GetMemoizer<TResult>();
+            memoizer.InvalidateAll();
+        }
+
         #endregion
 
         #region Private Methods

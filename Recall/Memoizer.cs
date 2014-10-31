@@ -550,6 +550,14 @@ namespace Recall
                        };
         }
 
+        public void InvalidateAll()
+        {
+            lock (_locker)
+            {
+                _cache.Clear();
+            }
+        }
+
         #endregion
 
         #region Private Methods

@@ -18,6 +18,8 @@ namespace Recall
         MemoizedTaskAsyncFunc<TResult> MemoizeTask<TResult>(Func<Task<IEnumerable<TResult>>> func);
 
         MemoizedTaskAsyncFunc<TArg, TResult> MemoizeTask<TArg, TResult>(Func<TArg, Task<IEnumerable<TResult>>> func);
+
+        void InvalidateAll<TResult>();
     }
 
     public interface IMemoizer<TResult>
@@ -38,5 +40,7 @@ namespace Recall
         MemoizedTaskAsyncFunc<TResult> MemoizeTask(Func<Task<IEnumerable<TResult>>> func);
 
         MemoizedTaskAsyncFunc<TArg, TResult> MemoizeTask<TArg>(Func<TArg, Task<IEnumerable<TResult>>> func);
+
+        void InvalidateAll();
     }
 }

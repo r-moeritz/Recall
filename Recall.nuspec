@@ -2,14 +2,14 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2011/08/nuspec.xsd">
   <metadata>
     <id>Recall</id>
-    <version>1.0.5</version>
+    <version>1.0.6</version>
     <authors>Ralph Möritz</authors>
     <owners>Ralph Möritz</owners>
     <projectUrl>https://github.com/rmoritz/Recall</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
     <description>A portable memoization and caching library for .NET</description>
     <releaseNotes />
-    <copyright>Copyright 2012 Ralph Möritz</copyright>
+    <copyright>Copyright 2012-2014 Ralph Möritz</copyright>
     <tags>memoization cashing C# .NET</tags>
   </metadata>
 </package>
